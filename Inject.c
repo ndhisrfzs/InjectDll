@@ -17,27 +17,32 @@ typedef DWORD (WINAPI *PFNTCREATETHREADEX)
 
 static BOOL 
 EnablePrivilege(LPCTSTR lpszPrivilege, BOOL bEnablePrivilege){
+	BOOL bResult = FALSE;
 	HANDLE hToken;
 	TOKEN_PRIVILEGES priv = {1, {0, 0, 0}};
 	if(!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken)){
-		return FALSE;
+		goto error;
 	}
 	if(!LookupPrivilegeValue(NULL, lpszPrivilege, &priv.Privileges[0].Luid)){
-		return FALSE;
+		goto error;
 	}
-	if (bEnablePrivilege){
-		priv.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-	}
+
+	priv.Privileges[0].Attributes = bEnablePrivilege ? SE_PRIVILEGE_ENABLED : 0;
+
 	if(!AdjustTokenPrivileges(hToken, FALSE, &priv, sizeof(priv), 0, 0)){
-		return FALSE;
+		goto error;
 	}
 	if(GetLastError() == ERROR_NOT_ALL_ASSIGNED){
-		return FALSE;
+		goto error;
 	}
 
-	CloseHandle(hToken);
+	bResult = TRUE;
+error:
+	if (hToken != NULL){
+		CloseHandle(hToken);
+	}
 
-	return TRUE;
+	return bResult;
 }
 
 static BOOL 
